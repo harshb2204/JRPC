@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: rpc
+
+harsh:
+  rpc:
+    server:
+      port: 8800
+      boss: 1
+      worker: 3
+      backlog: 128
+    client:
+      worker: 3
+      host: 127.0.0.1
