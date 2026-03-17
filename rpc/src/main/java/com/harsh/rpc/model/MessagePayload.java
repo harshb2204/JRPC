@@ -1,5 +1,6 @@
 package com.harsh.rpc.model;
 
+import com.alibaba.fastjson.annotation.JSONField;
 import org.apache.coyote.Request;
 import org.apache.coyote.RequestInfo;
 import org.apache.logging.log4j.message.Message;
@@ -10,6 +11,8 @@ public class MessagePayload implements Serializable {
 
     private String clientID;
 
+
+    @JSONField(serializeUsing = MessageTypeSerializer.class, deserializeUsing = MessageTypeDeserializer.class)
     private MessageType messageType;
 
     private Object payload; // rpc req or res
