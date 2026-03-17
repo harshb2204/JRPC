@@ -17,7 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 public class RpcClient {
 
-    private NioEventLoopGroup worker = new NioEventLoopGroup();
+    private NioEventLoopGroup worker = new NioEventLoopGroup(); // as client does not accept connections we need only one worker thread
 
     private static final Logger logger = LoggerFactory.getLogger(RpcClient.class);
 
@@ -28,6 +28,7 @@ public class RpcClient {
     private String host;
 
     private Channel channel;
+    // in netty channel -> active connection (like a tcp socket)
 
     public RpcClient() {
         new Thread(new Runnable() {
@@ -45,9 +46,9 @@ public class RpcClient {
     }
 
     private void connect() throws InterruptedException {
-        Bootstrap bootstrap = new Bootstrap();
+        Bootstrap bootstrap = new Bootstrap(); // netty client builder
 
-        bootstrap.group(worker).channel(NioSocketChannel.class)
+        bootstrap.group(worker).channel(NioSocketChannel.class) //Use NIO TCP client socket
                 .handler(new ChannelInitializer<SocketChannel>() {
 
 
