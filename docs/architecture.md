@@ -21,4 +21,11 @@ serialization.
 - The pipeline belongs to the server. When netty client sends the message to the server it goes through the pipeline.
 - The message is processed by the handlers in the pipeline.
 - Inbound handlers are for incoming data events and outbound handlers are for outgoing data events.
--  
+
+
+### The Encoders and Decoders
+
+![](/docs/diagrams/needofprotocol.png)
+![](/docs/diagrams/encoding.png)
+
+
