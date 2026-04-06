@@ -1,5 +1,8 @@
 package com.harsh.rpc.server;
 
+import com.harsh.rpc.handler.JsonCallMessageEncoder;
+import com.harsh.rpc.handler.JsonMessageDecoder;
+import com.harsh.rpc.handler.RpcServerMessageHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelFuture;
@@ -37,12 +40,16 @@ public class RpcServer {
             ServerBootstrap serverBootstrap = new ServerBootstrap(); // helper class to configure the server
             serverBootstrap.group(boss, worker) // setting thread groups
                     .channel(NioServerSocketChannel.class).option(ChannelOption.SO_BACKLOG, 128)// use a non blocking tcp and a queue size
-                    .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+
                     .childOption(ChannelOption.SO_KEEPALIVE, true).childHandler(new ChannelInitializer<
                             SocketChannel>() { // keepts TCP connection alive
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             // inside this method we configure the pipeline
+
+                            socketChannel.pipeline().addLast(new JsonCallMessageEncoder());
+                            socketChannel.pipeline().addLast(new JsonMessageDecoder());
+                            socketChannel.pipeline().addLast(new RpcServerMessageHandler());
                         }
                     });
 
