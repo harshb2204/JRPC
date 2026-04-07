@@ -13,7 +13,8 @@ import org.slf4j.LoggerFactoryFriend;
 import org.springframework.beans.factory.annotation.Value;
 
 
-
+//Core component
+//Processing rpc request; scan all rpc methods
 
 public class RpcClient {
 
