@@ -5,6 +5,9 @@
     <option name="originalFiles">
       <list>
         <option value="$PROJECT_DIR$/rpc/pom.xml" />
+        <option value="$PROJECT_DIR$/rpc-common/pom.xml" />
+        <option value="$PROJECT_DIR$/rpc-booking/pom.xml" />
+        <option value="$PROJECT_DIR$/rpc-user/pom.xml" />
       </list>
     </option>
   </component>
