@@ -1,4 +1,6 @@
 package user;
 
-public class UserDetailsService {
+import com.harsh.rpc.config.RemoteService;
+
+public interface UserDetailService extends RemoteService {
 }
