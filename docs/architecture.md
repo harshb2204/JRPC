@@ -11,7 +11,7 @@ serialization.
 - Server analyzes the information and forwards this request to the correct service and when the booking gets this request and processes it 
 - User client triggers a remote call, so the framework captures this call through a dynamic proxy and inside they are sending a rpc req. 
 
-
+   
 
 ### The Pipeline
 
