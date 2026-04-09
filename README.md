@@ -22,7 +22,7 @@
 - The message is processed by the handlers in the pipeline.
 - Inbound handlers are for incoming data events and outbound handlers are for outgoing data events.
 
-
+   
 ### The Encoders and Decoders
 
 ![](/docs/diagrams/needofprotocol.png)
