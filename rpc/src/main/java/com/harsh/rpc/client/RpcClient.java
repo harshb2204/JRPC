@@ -7,6 +7,7 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.LoggerFactoryFriend;
@@ -31,7 +32,13 @@ public class RpcClient {
     private Channel channel;
     // in netty channel -> active connection (like a tcp socket)
 
+
     public RpcClient() {
+
+    }
+
+    @PostConstruct // method is called after the instace of the bean of the class is created
+    public void initialize(){
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -45,6 +52,8 @@ public class RpcClient {
 
         logger.info("Client finished init process");
     }
+
+
 
     private void connect() throws InterruptedException {
         Bootstrap bootstrap = new Bootstrap(); // netty client builder
