@@ -9,11 +9,12 @@ import java.lang.reflect.Type;
 public class MessageTypeSerializer implements ObjectSerializer {
     @Override
     public void write(JSONSerializer jsonSerializer, Object o, Object o1, Type type, int i) throws IOException {
-        if(o== null){
+        if (o == null) {
             jsonSerializer.writeNull();
+            return;
         }
 
-        if( o instanceof MessageType){
+        if (o instanceof MessageType) {
             MessageType messageType = (MessageType) o;
             jsonSerializer.write(messageType.name());
         }
