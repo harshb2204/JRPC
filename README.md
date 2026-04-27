@@ -1,31 +1,75 @@
-## Architecture
+# Custom RPC Framework
 
+A high-performance, custom Remote Procedure Call (RPC) framework built from scratch. It allows microservices to communicate with each other making remote network calls look and behave exactly like local Java method calls.
+
+##  Architecture
 
 ![](/docs/diagrams/architecture.png)
-- Lets imagine user which is called the consumer initiates a remote method call to booking using netty for network transport and custom encoder and decoders for message
-  serialization.
-- Client triggers a remote call. Client user which is the RPC consumer and and client booking which is the RPC producer implements and serves remote methods. The method in the architecture is marked as RPC method so other services can call it.
-- Server which is the central message router and hosts active netty channels for all clients. So when you start your client user there is a netty client which is regitered with the server forming a channel. So they generate a netty channel that can communicate with the server. So every client after it gets started a netty client is started and registered with the server. The server maintains all the channel information.
-- The message encoder converts the java object to byte array before sending out. The message decoder converts the byte array to java object after receiving it.The reason we need to have this serialization and deserialization is because in the netty network they use only byte streams.
-- So what they transport is the byte array itself. The RPC request is a Java object which contains the metadata about the method call like the method name, parameters, etc.
-- Server analyzes the information and forwards this request to the correct service and when the booking gets this request and processes it
-- User client triggers a remote call, so the framework captures this call through a dynamic proxy and inside they are sending a rpc req.
 
+The system consists of three main components:
+1. **RPC Consumer (e.g., User Service)**: The client that wants to call a method.
+2. **RPC Producer (e.g., Booking Service)**: The client that owns and executes the method.
+3. **Relay Server (Message Router)**: A central Netty TCP server that maintains active channels with all clients and routes messages between them. It executes no business logic.
 
+### The Request Lifecycle (End-to-End)
+When the User Service calls `bookingService.getBookingDetails(42)`:
+1. **Interception**: A Dynamic Proxy intercepts the local method call.
+2. **Serialization**: The framework packages the method details (Name, Parameters, Types) into an `RpcRequest` object and serializes it into a byte array.
+3. **Transport (Outbound)**: The Netty client sends the bytes over a TCP connection to the Relay Server.
+4. **Routing**: The Relay Server decodes the message, looks up the active channel for the Booking Service, and forwards the bytes.
+5. **Execution (Inbound)**: The Booking Service decodes the bytes back into an `RpcRequest`. Using **Java Reflection**, it maps the requested Method ID to the actual Java method and runs it.
+6. **Response**: The result is serialized into an `RpcResponse` and routed back through the Relay Server to the waiting User Service thread.
 
-### The Pipeline
+---
 
-![](/docs/diagrams/pipeline.png)
-- The pipeline is a doubly linked list.
-- It has addLast and addFirst methods which accept ChannelHandler and there are ChannelInboundHandler and ChannelOutboundHandler
-- The pipeline belongs to the server. When netty client sends the message to the server it goes through the pipeline.
-- The message is processed by the handlers in the pipeline.
-- Inbound handlers are for incoming data events and outbound handlers are for outgoing data events.
+##  Core Technologies
+*   **Networking**: Netty (Asynchronous, event-driven network application framework).
+*   **Serialization**: Kryo (High-speed binary serialization) and JSON (Fastjson/Jackson).
+*   **Dependency Injection**: Spring Boot.
+*   **Language Features**: Java Reflection, Dynamic Proxies, CompletableFuture.
 
-   
-### The Encoders and Decoders
+---
+
+##  Key Technical Concepts & Interview Talking Points
+
+### 1. How do we make a remote call look local? (Dynamic Proxies)
+*   **Concept**: We use `java.lang.reflect.Proxy` combined with Spring's `FactoryBean`. 
+*   **How it works**: The consumer only has an interface (e.g., `BookingService`). Spring injects a **Proxy** object instead of a real implementation. When the consumer calls a method on this proxy, the `InvocationHandler` intercepts the call, packages the method name and arguments, and sends them over the network.
+
+### 2. The Netty Pipeline & Handling TCP (Encoders/Decoders)
 
 ![](/docs/diagrams/needofprotocol.png)
+![](/docs/diagrams/pipeline.png)
 ![](/docs/diagrams/encoding.png)
+
+*   **Concept**: TCP is a stream-based protocol, meaning messages can be fragmented or bundled together. Netty only understands `ByteBuf` (raw bytes).
+*   **The Pipeline**: A doubly-linked list of handlers. Data goes through Inbound Handlers when receiving, and Outbound Handlers when sending.
+*   **Solving Fragmentation (Length-Prefix Framing)**: Our custom Encoders/Decoders prepend a 4-byte integer (the body length) to every message. The Decoder (`ByteToMessageDecoder`) checks if enough bytes have arrived before attempting to reconstruct the Java object.
+
+### 3. How does the server know which method to run? (Java Reflection)
+*   **Concept**: Over the network, the producer just receives strings (Method name, types). It must convert this into a real method execution.
+*   **The Solution**: We generate a unique **Method ID** (e.g., `getBooking.1.int.String`) to handle method overloading (`RpcMethodDescriptor`). The framework caches these during startup. When a request arrives, it uses the Method ID to fetch the `java.lang.reflect.Method` object and dynamically runs it using `method.invoke(object, args)`.
+
+### 4. How do we wait for the response? (Async to Sync Bridging)
+*   **Concept**: Netty is completely asynchronous. When the proxy sends the network request, the network I/O happens on a separate thread, but the consumer's thread needs a synchronous return value.
+*   **The Solution**: We use a `ConcurrentHashMap<String, CompletableFuture>` mapping Request IDs to Futures. 
+    *   The caller thread creates a `CompletableFuture`, stores it in the map, and calls `future.get(5, SECONDS)` (blocking itself).
+    *   When the Netty I/O thread receives the `RESPONSE`, it looks up the Request ID in the map, completes the future with the result, and wakes up the caller thread.
+
+### 5. Managing Spring Integration (Auto Scanning)
+*   **Concept**: We don't want developers writing boilerplate setup code.
+*   **The Solution**: We use custom annotations (`@EnableRpcClient`, `@AutoRemoteInjection`). Behind the scenes, we use Spring's `ImportBeanDefinitionRegistrar` and `ClassPathBeanDefinitionScanner` to dynamically scan for these annotations, generate proxies, and register them in the Spring Application Context before the app even fully starts.
+
+---
+
+##  Fault Tolerance & Reliability
+
+1. **Heartbeats (Keep-Alive)**
+   *   **Problem**: Dead TCP connections might look open to the OS but actually be dropped by a firewall or router.
+   *   **Solution**: We use Netty's `IdleStateHandler`. If the client is idle (no writes) for 5 seconds, it sends a `HEART_BEAT` message. If the server receives nothing (no reads) for a set period, it assumes the client crashed and cleans up its channel.
+2. **Fallbacks (Graceful Degradation)**
+   *   If the remote server is down or a timeout occurs (the `CompletableFuture.get()` throws a TimeoutException), the framework automatically routes the call to a local **Fallback Class** to return default data instead of crashing the application.
+
+---
 
 
